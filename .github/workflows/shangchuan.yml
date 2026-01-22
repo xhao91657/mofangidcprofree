@@ -1,4 +1,4 @@
-name: Download and Push IDC Template
+name: Download IDC Template with Git LFS
 
 on:
   workflow_dispatch:  # 允许手动触发
@@ -6,49 +6,95 @@ on:
     branches:
       - main
     paths:
-      - '.github/workflows/download-idc.yml'  # 当工作流文件更改时触发
+      - '.github/workflows/download-idc.yml'
 
 jobs:
   download-and-push:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
+    - name: Checkout repository with LFS
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
+        lfs: true  # 启用 LFS
+
+    - name: Install Git LFS
+      run: |
+        # 安装 Git LFS
+        curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+        sudo apt-get install git-lfs
+        git lfs install --local
+
+    - name: Setup Git LFS tracking for zip files
+      run: |
+        # 确保 .gitattributes 文件存在
+        if [ ! -f .gitattributes ]; then
+          echo "*.zip filter=lfs diff=lfs merge=lfs -text" > .gitattributes
+          echo "*.rar filter=lfs diff=lfs merge=lfs -text" >> .gitattributes
+          echo "idc.zip filter=lfs diff=lfs merge=lfs -text" >> .gitattributes
+        fi
+        
+        # 重新设置 LFS 跟踪
+        git lfs track "*.zip"
+        git lfs track "*.rar"
+        git lfs track "idc.zip"
+        
+        # 提交 .gitattributes 文件
+        git add .gitattributes
+        if git diff --staged --quiet; then
+          echo ".gitattributes 文件无变化"
+        else
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "更新 Git LFS 跟踪规则"
+          git push origin HEAD:${{ github.ref_name }}
+        fi
 
     - name: Download IDC template
       run: |
-        # 下载文件并保存为 idc.zip
+        # 下载大文件
+        echo "开始下载 idc.zip (约 122MB)..."
         curl -L -o idc.zip "https://small4.bakstotre.com/202601222115/8f6a38d247a849b1130bd6ebb9e1b28a/disk/2026/01/17/168629708/11768615740440.rar?filename=idc.zip&fileId=17184639396&fileSize=125136&sUserId=7631244&tUserId=7631244&oUserId=168629708"
         
-        # 验证文件是否下载成功
+        # 验证文件
         if [ ! -f idc.zip ]; then
           echo "下载失败：idc.zip 文件未创建"
           exit 1
         fi
         
         # 显示文件大小
-        ls -lh idc.zip
+        file_size=$(stat -f%z idc.zip 2>/dev/null || stat -c%s idc.zip)
+        echo "文件大小: $file_size 字节 ($((file_size/1024/1024))MB)"
+        
+        if [ $file_size -lt 1000000 ]; then
+          echo "警告：文件大小异常，可能下载失败"
+          exit 1
+        fi
 
     - name: Configure Git
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: Commit and push changes
+    - name: Push large file via Git LFS
       run: |
-        # 删除可能存在的旧版本
-        git rm -f idc.zip 2>/dev/null || true
+        # 确保使用 LFS 跟踪文件
+        git lfs track idc.zip
         
-        # 添加新文件
+        # 添加文件到 LFS
         git add idc.zip
         
-        # 提交更改
+        # 检查是否有更改需要提交
         if git diff --staged --quiet; then
           echo "没有更改需要提交"
         else
-          git commit -m "添加/更新 idc.zip 带panidc模版版本 [$(date +'%Y-%m-%d %H:%M:%S')]"
+          echo "提交大文件到 Git LFS..."
+          git commit -m "添加 idc.zip (122MB) 带panidc模版版本 [$(date +'%Y-%m-%d %H:%M:%S')]"
+          
+          # 推送到远程仓库，包括 LFS 对象
           git push origin HEAD:${{ github.ref_name }}
+          
+          echo "文件已通过 Git LFS 上传"
+          echo "注意：GitHub 免费账户提供 1GB LFS 存储和 1GB 带宽"
         fi
