@@ -7,4 +7,4 @@
 
 修改phpini 末尾添加这一行 重载配置
 
-extension=idcsmart73.so(如果你是php7.2那就将php73修改为72如果是7.4版本同理
+extension=idcsmart73.so(如果你是php7.2那就将php73修改为72如果是7.4版本同理)
