@@ -3,7 +3,7 @@
 
 下载我提供的安装包
 
-需要安装php扩展。根据网站要使用的php版本，下载扩展文件（[php7.2](https://raw.githubusercontent.com/xhao91657/mofangidcprofree/idcsmart72.so)，上传到php安装目录 /lib/php/extensions/no-debug-non-zts-xxxx（xxxx为一串数字）文件夹里面。
+需要安装php扩展。根据网站要使用的php版本，下载扩展文件([php7.2](https://raw.githubusercontent.com/xhao91657/mofangidcprofree/blob/main/idcsmart72.so)，上传到php安装目录 /lib/php/extensions/no-debug-non-zts-xxxx（xxxx为一串数字）文件夹里面。
 
 修改phpini 末尾添加这一行 重载配置
 
